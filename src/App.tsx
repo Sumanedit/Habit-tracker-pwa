@@ -1,6 +1,7 @@
 import { Route, Routes, Navigate, Link } from 'react-router-dom';
 import { useAuthStore } from './features/auth/authStore';
 import { AuthForm } from './features/auth/AuthForm';
+import { ResetPasswordForm } from './features/auth/ResetPasswordForm';
 import { Dashboard } from './features/analytics/Dashboard';
 import { HabitsPage } from './features/habits/HabitsPage';
 
@@ -29,6 +30,7 @@ export default function App() {
       </header>
       <main>
         <Routes>
+          <Route path="/auth/reset-password" element={<ResetPasswordForm />} />
           <Route
             path="/"
             element={
