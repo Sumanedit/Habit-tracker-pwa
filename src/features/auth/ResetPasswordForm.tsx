@@ -12,14 +12,49 @@ export function ResetPasswordForm() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we have a valid session from the reset link
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+    const ensureSessionFromUrl = async () => {
+      // Supabase sends a code (PKCE) in the query for recovery links
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+
+      // Older links may include access_token in the hash fragment
+      const hash = window.location.hash.replace('#', '');
+      const hashParams = new URLSearchParams(hash);
+      const access_token = hashParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token');
+
+      // If we already have a session, mark valid
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session) {
         setIsValidToken(true);
-      } else {
-        setError('Invalid or expired reset link. Please request a new one.');
+        return;
       }
-    });
+
+      // Try code exchange (preferred)
+      if (code) {
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!exchangeError && data.session) {
+          setIsValidToken(true);
+          return;
+        }
+      }
+
+      // Fallback: set session from hash tokens if present
+      if (access_token && refresh_token) {
+        const { data, error: setErr } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (!setErr && data.session) {
+          setIsValidToken(true);
+          return;
+        }
+      }
+
+      setError('Invalid or expired reset link. Please request a new one.');
+    };
+
+    ensureSessionFromUrl();
   }, []);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -39,7 +74,7 @@ export function ResetPasswordForm() {
 
     setSubmitting(true);
     const { error: updateError } = await supabase.auth.updateUser({
-      password: password,
+      password,
     });
     setSubmitting(false);
 

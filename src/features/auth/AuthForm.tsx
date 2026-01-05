@@ -11,6 +11,8 @@ export function AuthForm() {
   const [submitting, setSubmitting] = useState(false);
   const loading = useAuthStore((s) => s.loading);
 
+  const redirectBase = import.meta.env.VITE_SITE_URL || window.location.origin;
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -23,7 +25,7 @@ export function AuthForm() {
       }
       setSubmitting(true);
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${redirectBase}/auth/reset-password`,
       });
       setSubmitting(false);
       
