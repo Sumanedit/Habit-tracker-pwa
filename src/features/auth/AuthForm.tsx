@@ -5,7 +5,7 @@ import { useAuthStore } from './authStore';
 export function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'reset'>('sign-in');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -15,6 +15,28 @@ export function AuthForm() {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    if (mode === 'reset') {
+      if (!email) {
+        setError('Email is required');
+        return;
+      }
+      setSubmitting(true);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      setSubmitting(false);
+      
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setSuccess('Password reset link sent to your email! Check your inbox.');
+        setEmail('');
+        setTimeout(() => setMode('sign-in'), 3000);
+      }
+      return;
+    }
+
     if (!email || !password) {
       setError('Email and password are required');
       return;
@@ -40,7 +62,9 @@ export function AuthForm() {
 
   return (
     <div className="auth-card">
-      <h2>{mode === 'sign-in' ? 'Sign In' : 'Create Account'}</h2>
+      <h2>
+        {mode === 'sign-in' ? 'Sign In' : mode === 'sign-up' ? 'Create Account' : 'Reset Password'}
+      </h2>
       <form onSubmit={onSubmit}>
         <label>
           Email
@@ -52,29 +76,60 @@ export function AuthForm() {
             required
           />
         </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
-        </label>
+        {mode !== 'reset' && (
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </label>
+        )}
         {error && <p className="error">{error}</p>}
         {success && <p className="success">{success}</p>}
         <button type="submit" disabled={loading || submitting}>
-          {submitting ? 'Processing...' : mode === 'sign-in' ? 'Sign In' : 'Sign Up'}
+          {submitting
+            ? 'Processing...'
+            : mode === 'sign-in'
+            ? 'Sign In'
+            : mode === 'sign-up'
+            ? 'Sign Up'
+            : 'Send Reset Link'}
         </button>
       </form>
-      <button
-        type="button"
-        className="link"
-        onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
-      >
-        {mode === 'sign-in' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
-      </button>
+      
+      {mode === 'sign-in' && (
+        <>
+          <button
+            type="button"
+            className="link"
+            onClick={() => setMode('sign-up')}
+          >
+            Need an account? Sign up
+          </button>
+          <button
+            type="button"
+            className="link"
+            style={{ marginTop: '8px', fontSize: '12px' }}
+            onClick={() => setMode('reset')}
+          >
+            Forgot password?
+          </button>
+        </>
+      )}
+
+      {(mode === 'sign-up' || mode === 'reset') && (
+        <button
+          type="button"
+          className="link"
+          onClick={() => setMode('sign-in')}
+        >
+          Back to Sign In
+        </button>
+      )}
     </div>
   );
 }
